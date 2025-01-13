@@ -1,11 +1,11 @@
 # MIXTAPE
-
+Art Installation about a lives birthday memories (TouchDesigner, Arduino, DaVinci Resolve)
+----------------------------------------------
 Link to the Trailer and all memories:
 https://www.youtube.com/watch?v=45xou6YD6Uc&list=PLJR0d_Vv370_5z8SbQHiUYpTRRZ9-fPv3
 
+Embed:
 [![MIXTAPE TRAILER](https://img.youtube.com/vi/45xou6YD6Uc&list=PLJR0d_Vv370_5z8SbQHiUYpTRRZ9-fPv3/0.jpg)](https://www.youtube.com/watch?v=45xou6YD6Uc&list=PLJR0d_Vv370_5z8SbQHiUYpTRRZ9-fPv3)
-
-Art Installation about a lives birthday memories (TouchDesigner, Arduino, DaVinci Resolve)
 
 Instructions: 
 1. clone Repo
