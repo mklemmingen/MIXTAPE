@@ -16,6 +16,13 @@ Instructions:
 6. Assign the right audio outputs to the right in room audio outs
 7. open window onto seperate windows. Needs a screen that supports the display of 5670x1080 (or, as original, three full-hd beamers to create a 270* view)
 
-The .mov files with HAP-Encoding have been reencoded to a max of 100MB to fit in this repo. Download and reencode from youtube for a higher quality
+In th VIDEO directory, put the videos downloaded from youtube and HAP encoded
+Call them:
+Abschnitt_bookOfLove_HAP.mov 
+Abschnitt_JUGEND_HAP.mov 
+Abschnitt_Kind_HAP.mov 
+Abschnitt_Love_HAP.mov 
+Abschnitt_STUDY_HAP.mov
+
 
 Enjoy
