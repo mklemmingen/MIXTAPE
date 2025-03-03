@@ -17,11 +17,17 @@ Instructions:
 7. open window onto seperate windows. Needs a screen that supports the display of 5670x1080 (or, as original, three full-hd beamers to create a 270* view)
 
 In th VIDEO directory, put the videos downloaded from youtube and HAP encoded
+
 Call them:
+
 Abschnitt_bookOfLove_HAP.mov 
+
 Abschnitt_JUGEND_HAP.mov 
+
 Abschnitt_Kind_HAP.mov 
+
 Abschnitt_Love_HAP.mov 
+
 Abschnitt_STUDY_HAP.mov
 
 
