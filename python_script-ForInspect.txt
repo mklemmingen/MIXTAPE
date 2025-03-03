@@ -1,0 +1,539 @@
+﻿# me - this DAT
+#
+# frame - the current frame
+# state - True if the timeline is paused
+#
+# Make sure the corresponding toggle is enabled in the Execute DAT.
+import random
+
+# Definition of the Section class
+class Section:
+    def __init__(self, video_file, audio_file, info_chop, audio_movie, narrator_voice):
+        self.video_file = video_file  # Video file input component
+        self.audio_file = audio_file  # Audio file input component
+        self.info_chop = info_chop # info_chop used to check if last frame reached for stopping the video
+        self.audio_movie = audio_movie # audio movie used to connect video audio to output room
+        self.narrator_voice = narrator_voice # used to play one time when a last frame has been reached
+
+# boolean state variables of the installation
+global in_looking_start
+global in_start
+global in_ongoing
+
+# for counting stars
+global elapsedDelta
+global lastFrequency
+
+# runs once so we don't have to use methods
+global booleanOnce
+booleanOnce = False
+
+global connectMultiple
+
+global startPlay
+
+# reference holder for a list of section classes in sorted order
+global sections
+
+def onStart():
+    return
+
+def onCreate():
+    return
+
+def onExit():
+    return
+
+# Looping code goes here (runs every frame)
+def onFrameStart(frame):
+    print(f"New Frame: {frame}")
+
+    global startPlay
+
+    global sections
+    global booleanOnce
+
+    global in_looking_start
+    global in_start
+    global in_ongoing
+
+    global elapsedDelta
+    global lastFrequency
+
+    global connectMultiple
+    in_static = False
+
+    # Get the current frequency value from the radio_component
+    frequency = op('radio_component').par.Frequency.eval()
+    print("NF")
+    print(frequency)
+
+    def show_icons():
+        add_from_icons = op('add4')
+        add_icons_screen = op('add5')
+
+        # connect add4 to add5
+        add_from_icons.outputConnectors[0].connect(add_icons_screen.inputConnectors[0])
+
+    def hide_icons():
+        add_from_icons = op('add4')
+        add_icons_screen = op('add5')
+
+        # disconnect add4 from add5 if there is a connection
+        if add_from_icons.outputConnectors[0].connections:
+            add_from_icons.outputConnectors[0].disconnect()
+
+    def initialize_sections():
+
+        KIND = Section("kindmoviefilein", "kindAudio", "last_frame_kind",
+                       "audioMovieKind", "narratorKind")
+        JUGEND = Section("jugendmoviefilein", "jugendAudio", "last_frame_jugend",
+                         "audioMovieJugend", "narratorJugend")
+        STUDY = Section("studymoviefilein", "studyAudio", "last_frame_study",
+                        "audioMovieStudy", "narratorStudy")
+        LOVE = Section("lovemoviefilein", "loveAudio", "last_frame_love",
+                       "audioMovieLove", "narratorLove")
+        BOOK_OF_LOVE = Section("bookOfLovemoviefilein", "bookOfLoveAudio",
+                               "last_frame_bookoflove","audioMovieBookOfLove",
+                               "narratorBookOfLove")
+        return KIND, JUGEND, STUDY, LOVE, BOOK_OF_LOVE
+
+    def reloadPulse(node):
+        node.par.reloadpulse.pulse()
+
+    def start_LookingForStart():
+        global in_looking_start, in_start, in_ongoing
+        hide_icons()
+        op('progressSlider').par.value0 = 0
+        in_looking_start = True
+        in_start = False
+        in_ongoing = False
+
+    def start_inStart():
+        global in_looking_start, in_start, in_ongoing
+        in_looking_start = False
+        in_start = True
+        in_ongoing = False
+
+    def start_inOngoing():
+        global in_looking_start, in_start, in_ongoing
+        in_looking_start = False
+        in_start = False
+        in_ongoing = True
+
+    # inner function to cut everything away from videofileout
+    def cut_off_input_to_windows():
+        for input_connector in op('videoFileHere').inputConnectors:
+            input_connector.disconnect()
+
+    # inner function to cut off all audio connections to room audio out
+    def cut_all_audio_connections():
+        for input_connector in op('audiofileoutROOM').inputConnectors:
+            input_connector.disconnect()
+
+    def cut_off_comp_conns():
+        for input_connector in op('compBuffer').inputConnectors:
+            input_connector.disconnect()
+
+    if booleanOnce is False:
+
+        hide_icons()
+
+        # set value of progressSlider to 0
+        op('progressSlider').par.value0 = 0
+
+        lastFrequency = 0
+        elapsedDelta = 0
+
+        startPlay = False
+
+        connectMultiple = False
+
+        sections = initialize_sections()
+
+        # starting with kinect pooling state
+        start_LookingForStart()
+
+        # turn dmx off
+        op("lampeAn").par.value0 = 0
+
+        cut_all_audio_connections() # audio room
+        cut_off_input_to_windows() # window
+        cut_off_comp_conns() # comp
+
+        booleanOnce = True
+
+    # check which state the system is in
+    if in_looking_start:
+        print("Currently looking for start.")
+
+        # kinect polling if math is 1
+        # if math is 1 -> dmx on -> radio output rosi
+        if op('kinectMath')[0] == 1:
+
+            cut_all_audio_connections()  # audio room
+            cut_off_input_to_windows()  # window
+            cut_off_comp_conns()  # comp
+
+            # dmx an
+            op('lampeAn').par.value0 = 1
+            # output of rosi audio file to radioaudioout
+            op('hallo').outputConnectors[0].connect(op('audiofileoutRADIO').inputConnectors[0])
+            # Set the audiofilein to play once
+            op('hallo').par.repeat = False
+            reloadPulse(op('hallo'))
+            # Start playing the audiofilein
+            op('hallo').par.play = True
+
+            # state to start
+            start_inStart()
+
+            elapsedDelta = 0
+
+    elif in_start:
+        print("Starting.")
+        op('progressSlider').par.value0 = 0
+
+        # measure time, 10 seconds (assuming 60 fps)
+        elapsedDelta += 1
+
+        # if elapsed -> end audio rosi, dim down lamp
+        if elapsedDelta > 900:
+
+            # AUDIO
+            # stopping
+            op('hallo').par.play = False
+
+            # Disconnect the audiofilein from audiofileout
+            op('hallo').outputConnectors[0].disconnect()
+
+            #DMX off
+            op("lampeAn").par.value0 = 0
+
+            # set starting value to buffer before kind, after book of love
+            op('radio_component').par.Frequency = 25
+            lastFrequency = 25
+
+            # state to ongoing
+            connectMultiple = True
+            startPlay = True
+            start_inOngoing()
+
+            show_icons()
+
+            elapsedDelta = 0
+
+    elif in_ongoing:
+        video_crop = op('videoFileHere')
+
+        # between 0 and 1, 200/frequency
+        op('progressSlider').par.value0 = frequency / 200
+
+        # randomly set a number between 0 and 9000 for the seed in noise1
+        op('noise1').par.seed = random.randint(0, 9000)
+
+        def connectToComp(audioFile):
+            global connectMultiple
+
+            audio_in = op(audioFile)
+            audio_out = op('compBuffer')
+
+            if connectMultiple:
+                reloadPulse(audio_in)
+                audio_in.par.play = True
+
+                # Schleife durch die Eingangsverbindungen des Composite Buffers
+                for i in range(len(audio_out.inputConnectors)):
+                    if not audio_out.inputConnectors[i].connections:
+                        audio_out.inputConnectors[i].connect(audio_in)
+                        print(f"Connected {audioFile} to input {i} of compBuffer")
+                        return
+                print("No empty connection found in compBuffer")
+
+        # function to play the narrator voice once when the last frame has been reached
+        def play_narrator_voice(narratorvoice):
+            narrator = op(narratorvoice)
+            connectToComp(narratorvoice)
+            narrator.par.repeat = False
+            narrator.par.play = True
+            reloadPulse(narrator)
+            print(f"Playing narrator voice: {narrator}")
+
+        # Function to assign video file if different
+        def assign_video_file(audioMovie, videoFile, infochop):
+
+            global connectMultiple
+            global startPlay
+
+            connectMultiple = True
+
+            cut_off_comp_conns()
+
+            audioMovie = op(audioMovie)
+            videoFile = op(videoFile)
+            info_chop = op(infochop)
+
+            # input connection is p
+            # Check if there are any connections
+
+            if video_crop.inputConnectors[0].connections[0].owner != videoFile:
+                if startPlay:
+                    #AUDIO
+                    # cut off all audio connections to room audio out
+                    cut_all_audio_connections()
+                    # assign the audioMovie file to audio out
+                    op("audiofileoutROOM").inputConnectors[0].connect(audioMovie)
+
+                    # VIDEO
+                    # cut of all connections of last video files to video out
+                    cut_off_input_to_windows()
+                    # assigning video to output
+                    video_crop.inputConnectors[0].connect(videoFile)
+                    # Start playing the audiofilein
+                    videoFile.par.play = True
+                    reloadPulse(videoFile)
+
+                    startPlay = False
+                    print(f"Assigned video file: {videoFile}")
+
+            # Check if the video has elapsed using Info CHOP
+            if info_chop['last_frame'] == 1:
+                # Change frequency to the middle of the next buffer
+                if 35 <= frequency <= 45:
+                    op('radio_component').par.Frequency = 60  # Middle of buffer between KIND and JUGEND
+                    play_narrator_voice("narratorKind")
+                elif 75 <= frequency <= 85:
+                    op('radio_component').par.Frequency = 100  # Middle of buffer between JUGEND and STUDY
+                    play_narrator_voice("narratorJugend")
+                elif 115 <= frequency <= 125:
+                    op('radio_component').par.Frequency = 140  # Middle of buffer between STUDY and LOVE
+                    play_narrator_voice("narratorStudy")
+                elif 155 <= frequency <= 165:
+                    op('radio_component').par.Frequency = 180  # Middle of buffer between LOVE and BOOK_OF_LOVE
+                    play_narrator_voice("narratorLove")
+                elif 195 <= frequency or 5 >= frequency :
+                    op('radio_component').par.Frequency = 20  # Middle of buffer between BOOK_OF_LOVE and KIND
+                    play_narrator_voice("narratorBookOfLove")
+                print(f"Video elapsed. Changed frequency to middle of next buffer.")
+                cut_all_audio_connections()
+
+        # inner method to make sure static is the video at video out
+        def static_to_video_out():
+            static_movie = op('staticmoviefilein')
+
+            # Check if there are any connections
+            if video_crop.inputConnectors[0].connections:
+                # Check if the static movie is already connected to the video output
+                if video_crop.inputConnectors[0].connections[0].owner != static_movie:
+                    cut_off_input_to_windows()
+
+            # Connect the static movie to the video output
+            video_crop.inputConnectors[0].connect(static_movie)
+
+        # inner method to mix the audios of the closest sections together to audioOut
+        def mixing_closest_section_audios(leftAudioFile, linksBarriereFrequency, rightAudioFile, rechtsBarriereFrequency):
+
+            global connectMultiple
+            global startPlay
+
+            startPlay = True
+
+            def mixAudio(audioFile, lautstaerke):
+                audio_in = op(audioFile)
+                # set laustaerke of audio file
+                audio_in.par.volume = lautstaerke
+                static_audio = op("staticAudio")
+                # if lautstaerke is zero, skip setting the lautstaerke of static
+                # if lautstaerke is not zero, invert value to 1 to assign to static
+                if not lautstaerke == 0:
+                    staticVolume = 1- lautstaerke
+                    # set opaqueness of the static noise generator
+                    op('level1').par.opacity = staticVolume
+                    if staticVolume == 0:
+                        op('level1').par.opacity = 0.1
+                        staticVolume = 0.05 # atleast a little bit so the user knows he isnt in the section
+                    static_audio.par.volume = staticVolume
+
+            # 1 / 15 der lautstärke je ganzzahl näher/weiter
+
+            distanceLeft = frequency - linksBarriereFrequency
+            distanceRight = rechtsBarriereFrequency - frequency
+
+            laustaerkeLinks = 1/15 * distanceLeft
+            if laustaerkeLinks > 1:
+                laustaerkeLinks = 1
+            laustaerkeLinks = 1 - laustaerkeLinks
+
+            lautstaerkeRechts = 1/15 * distanceRight
+            if lautstaerkeRechts > 1:
+                lautstaerkeRechts = 1
+            lautstaerkeRechts = 1 - lautstaerkeRechts
+
+            connectToComp("staticAudio")
+
+            connectToComp(leftAudioFile)
+            # mix audio depending on lautstaerkeLinks
+            mixAudio(leftAudioFile, laustaerkeLinks)
+
+            connectToComp(rightAudioFile)
+            # mix audio depending on lautstaerkeRechts
+            mixAudio(rightAudioFile, lautstaerkeRechts)
+
+            # assign compBuffer to audiofileoutRADIO
+            audio_out = op('audiofileoutRADIO')
+            audio_out.inputConnectors[0].connect(op("compBuffer"))
+
+            connectMultiple = False
+
+        def cutOutAudioMovies():
+            global sections
+            # Get the owner of the first connection
+            if op("audiofileoutROOM").inputConnectors[0].connections:
+                owner = op("audiofileoutROOM").inputConnectors[0].connections[0].owner
+                if owner == op(sections[0].audio_movie):
+                    cut_all_audio_connections()
+                elif owner == op(sections[1].audio_movie):
+                    cut_all_audio_connections()
+                elif owner == op(sections[2].audio_movie):
+                    cut_all_audio_connections()
+                elif owner == op(sections[3].audio_movie):
+                    cut_all_audio_connections()
+                elif owner== op(sections[4].audio_movie):
+                    cut_all_audio_connections()
+
+        def rectangle_to_bright_blue():
+            op('rectangle1').par.fillcolorr = 0.4980392
+            op('rectangle1').par.fillcolorg = 0.8666667
+            op('rectangle1').par.fillcolorb = 1
+
+        def rectangle_to_nice_red():
+            op('rectangle1').par.fillcolorr = 0.5
+            op('rectangle1').par.fillcolorg = 0
+            op('rectangle1').par.fillcolorb = 0
+
+        def rectangle_to_nice_green():
+            op('rectangle1').par.fillcolorr = 0.682353
+            op('rectangle1').par.fillcolorg = 1
+            op('rectangle1').par.fillcolorb = 0.4980392
+
+        def rectangle_to_nice_yellow():
+            op('rectangle1').par.fillcolorr = 0.9137255
+            op('rectangle1').par.fillcolorg = 1
+            op('rectangle1').par.fillcolorb = 0
+
+        def rectangle_to_nice_purple():
+            op('rectangle1').par.fillcolorr = 0.3568628
+            op('rectangle1').par.fillcolorg = 0
+            op('rectangle1').par.fillcolorb = 1
+
+
+        # Switch case to check the current frequency value
+        if 35 <= frequency <= 45:
+            rectangle_to_nice_red()
+            in_static = True
+            assign_video_file(sections[0].audio_movie, sections[0].video_file, sections[0].info_chop)
+            print("Section: KIND")
+
+        elif 45 <= frequency <= 75:
+            rectangle_to_bright_blue()
+            cutOutAudioMovies()
+            static_to_video_out()
+            mixing_closest_section_audios(sections[0].audio_file, 45 , sections[1].audio_file, 75)
+            print("Buffer between KIND and JUGEND")
+
+        elif 75 <= frequency <= 85:
+            rectangle_to_nice_purple()
+            in_static = True
+            assign_video_file(sections[1].audio_movie, sections[1].video_file, sections[1].info_chop)
+            print("Section: JUGEND")
+
+        elif 85 <= frequency <= 115:
+            rectangle_to_bright_blue()
+            cutOutAudioMovies()
+            static_to_video_out()
+            mixing_closest_section_audios(sections[1].audio_file, 85 , sections[2].audio_file, 115)
+            print("Buffer between JUGEND and STUDIEREN")
+
+        elif 115 <= frequency <= 125:
+            rectangle_to_nice_green()
+            in_static = True
+            assign_video_file(sections[2].audio_movie, sections[2].video_file, sections[2].info_chop)
+            print("Section: STUDY")
+
+        elif 125 <= frequency <= 155:
+            rectangle_to_bright_blue()
+            cutOutAudioMovies()
+            static_to_video_out()
+            mixing_closest_section_audios(sections[2].audio_file, 125 , sections[3].audio_file, 155)
+            print("Buffer between STUDY and LOVE")
+
+        elif 155 <= frequency <= 165:
+            rectangle_to_nice_yellow()
+            in_static = True
+            assign_video_file(sections[3].audio_movie, sections[3].video_file, sections[3].info_chop)
+            print("Section: LOVE")
+
+        elif 165 <= frequency <= 195:
+            rectangle_to_bright_blue()
+            cutOutAudioMovies()
+            static_to_video_out()
+            mixing_closest_section_audios(sections[3].audio_file, 165 , sections[4].audio_file, 195)
+            print("Buffer between LOVE and BOOK_OF_LOVE")
+
+        elif 5 <= frequency <= 35:
+            rectangle_to_bright_blue()
+            cutOutAudioMovies()
+            static_to_video_out()
+            mixing_closest_section_audios(sections[4].audio_file, 5 , sections[0].audio_file, 35)
+            print("Buffer between BOOK_OF_LOVE and KIND")
+        else:
+            rectangle_to_nice_red()
+            in_static = True
+            assign_video_file(sections[4].audio_movie, sections[4].video_file, sections[4].info_chop)
+            print("Section: BOOK_OF_LOVE")
+
+        print("Ongoing process.")
+
+        if in_static is False:
+            print("LF")
+            print(lastFrequency)
+            # checking if last frequency is the same as the current
+            if frequency == lastFrequency:
+                print("+1 lf")
+                elapsedDelta += 1
+                print(elapsedDelta)
+            else:
+                print("reset lf")
+                elapsedDelta = 0
+
+            lastFrequency = frequency
+
+            if elapsedDelta > 2100:
+                print("reached cutoff time!")
+                # cut of all connections of last video files to video out
+                cut_off_input_to_windows()
+                cut_all_audio_connections()
+                cut_off_comp_conns()
+                start_LookingForStart()
+
+    # END OF STATES THAT HAVE BEEN CONFIGURED
+    else:
+        print("Unknown state.")
+
+    return
+
+def onFrameEnd(frame):
+    return
+
+def onPlayStateChange(state):
+    return
+
+def onDeviceChange():
+    return
+
+def onProjectPreSave():
+    return
+
+def onProjectPostSave():
+    return
+
