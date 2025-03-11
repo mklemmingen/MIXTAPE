@@ -16,6 +16,8 @@ Instructions:
 6. Assign the right audio outputs to the right in room audio outs
 7. open window onto seperate windows. Needs a screen that supports the display of 5670x1080 (or, as original, three full-hd beamers to create a 270* view)
 
+--- VIDEO instructions
+
 In th VIDEO directory, put the videos downloaded from youtube and HAP encoded
 
 Call them:
@@ -30,5 +32,12 @@ Abschnitt_Love_HAP.mov
 
 Abschnitt_STUDY_HAP.mov
 
+--- Arduino controller
+
+Take a simple arduino microcontroller and program it with the code found in the repo.
+Install a rotary potentiometer to the pins assigned for the digital info pin in the code.
+connect the arduino via a usb (if long, use an active cable) to the touchdesigner running computer.
+
+---
 
 Enjoy
